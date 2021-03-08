@@ -106,7 +106,7 @@ public class Bank {
     {
         boolean isLoanPending = false;
         for(Accounts ac: accounts) 
-            if(ac.getCurrentLoan() > 0) 
+            if(ac.getCurrentLoan() > 0 && !ac.isLoanApproved()) 
                 isLoanPending = true;
                
         if(name.equals("MD")) {
