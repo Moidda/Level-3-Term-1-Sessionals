@@ -75,7 +75,14 @@ public:
     }
 
     ~ScopeTable() {
-
+        for(int i = 0; i < this->symbolsHashTable.size(); i++) {
+            SymbolInfo *cur = this->symbolsHashTable[i];
+            while(cur != NULL) {
+                SymbolInfo *nxt = cur->getNextSymbol();
+                delete cur;
+                cur = nxt;
+            }
+        }
     }
 
     // returns which bucket a symbolInfo object should belong using the symbolName
