@@ -200,6 +200,9 @@ public:
         return this->childScopeCount;
     }
 
+    // this function has to be called at least once to set an id to this object
+    // so even if there is no parent, setParentScope(NULL) has to be called
+    // since id is dependent on the parentScope's id
     void setParentScope(ScopeTable* parentScope) {
         this->parentScope = parentScope;
 
