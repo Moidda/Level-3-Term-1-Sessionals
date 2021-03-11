@@ -24,6 +24,16 @@ public:
 
     }
 
+    static bool isEquivalent(SymbolInfo *symbol, string symbolName) {
+        if(symbol == NULL) return false;
+        return (symbol->getSymbolName() == symbolName);
+    }
+
+    static bool isEquivalent(SymbolInfo *s1, SymbolInfo *s2) {
+        if(s1 == NULL or s2 == NULL) return false;
+        return (s1->getSymbolName() == s2->getSymbolName());
+    }
+
     string symbolToString() {
         string ret = "< " + this->symbolName + " : " + this->symbolType + " >";
         return ret;
@@ -96,46 +106,55 @@ public:
 
     // insert a symbolInfo in this scope
     bool scopeInsert(SymbolInfo *sinfo) {
-        if(this->scopeLookup(sinfo->getSymbolName()) != NULL) {
+        int bucket, position;
+        SymbolInfo *parent;
+        SymbolInfo* s =  this->scopeLookupAdvanced(sinfo->getSymbolName(), bucket, position, &parent);
+        if(SymbolInfo::isEquivalent(s, sinfo)) {
             cout << sinfo->symbolToString() + " already exists in current ScopeTable\n\n";
             return false;
         }
-
-        int bucket = this->scopeHash(sinfo->getSymbolName());
-        int pos = 0;
-        if(this->symbolsHashTable[bucket] == NULL) {
-            this->symbolsHashTable[bucket] = sinfo;
-        }
-        else {
-            SymbolInfo *cur = this->symbolsHashTable[bucket];
-            while(cur->getNextSymbol() != NULL) {
-                cur = cur->getNextSymbol();
-                pos++;
-            }
-            cur->setNextSymbol(sinfo);
-            pos++;
-        }
-
-        cout << "Inserted in ScopeTable# " << this->id << " " << "at position " << bucket << ", " << pos << "\n\n";
+        if(parent == NULL) this->symbolsHashTable[bucket] = sinfo, cout << "no parent\n\n";
+//        else  parent->setNextSymbol(sinfo);
+//        cout << "Inserted in ScopeTable# " << this->id << " " << "at position " << bucket << ", " << position << "\n\n";
         return true;
     }
 
     // searches for a specific symbolInfo in current scope
     SymbolInfo* scopeLookup(string symbolName) {
-        int bucket = this->scopeHash(symbolName);
-        int pos = 0;
-        SymbolInfo *cur = this->symbolsHashTable[bucket];
-        while(cur != NULL) {
-            if(cur->getSymbolName() == symbolName) {
-                cout << "Found in ScopeTable# " << this->getId() << " at position " << bucket << ", " << pos << "\n\n";
-                return cur;
-            }
-            cur = cur->getNextSymbol();
-        }
+        int bucket, position;
+        SymbolInfo *parent;
+        SymbolInfo* s = this->scopeLookupAdvanced(symbolName, bucket, position, parent);
+        if(SymbolInfo::isEquivalent(s, symbolName)) return s;
         return NULL;
     }
 
     bool scopeDelete(string symbolName) {
+        int bucket, pos;
+        SymbolInfo *parent;
+        SymbolInfo* s = this->scopeLookupAdvanced(symbolName, bucket, pos, parent);
+        if(SymbolInfo::isEquivalent(s, symbolName)) {
+            if(parent != NULL) parent->setNextSymbol(s->getNextSymbol());
+            else this->symbolsHashTable[bucket] = s->getNextSymbol();
+            delete s;
+
+            cout << "Deleted Entry " << bucket << ", " << pos << " from current ScopeTable\n\n";
+            return true;
+        }
+        return false;
+    }
+
+    // searches for a symbol and
+    // if symbol is found:
+    //     returns
+    //         -> reference to the symbol object
+    //         -> the bucket and position of the symbol object
+    //         -> reference to its parent symbol object
+    // if symbol not found:
+    //         -> returns null
+    //         -> the bucket and position of where the symbol object would belong to
+    //         -> reference to the last accessed symbol object
+    // fix this <--------------------------------------------------------------------------------
+    SymbolInfo* scopeLookupAdvanced(string symbolName, int &b, int &p, SymbolInfo *parent) {
         int bucket = this->scopeHash(symbolName);
         int pos = 0;
         SymbolInfo *par = NULL;
@@ -144,21 +163,24 @@ public:
         while(cur != NULL) {
             if(cur->getSymbolName() == symbolName) {
                 cout << "Found in ScopeTable# " << this->getId() << " at position " << bucket << ", " << pos << "\n\n";
-
-                if(par != NULL) par->setNextSymbol(cur->getNextSymbol());
-                else this->symbolsHashTable[bucket] = cur->getNextSymbol();
-                delete cur;
-
-                cout << "Deleted Entry " << bucket << ", " << pos << " from current ScopeTable\n\n";
-                return true;
+                b = bucket;
+                p = pos;
+                parent = par;
+                return cur;
             }
             par = cur;
             cur = cur->getNextSymbol();
             pos++;
         }
 
+        b = bucket;
+        p = pos;
+        parent = par;
+        if(parent == NULL) {
+            cout << "Advanced parent is NULL\n\n";
+        }
         cout << "Not found\n\n";
-        return false;
+        return NULL;
     }
 
     void scopePrint() {
@@ -232,6 +254,8 @@ public:
     }
 
     ~SymbolTable() {
+        // fix this <--------------------------------------------------------------------------------
+        // delete all parents
         delete currentScope;
     }
 
