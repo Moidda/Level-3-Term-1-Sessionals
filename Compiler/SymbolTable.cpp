@@ -107,15 +107,15 @@ public:
     // insert a symbolInfo in this scope
     bool scopeInsert(SymbolInfo *sinfo) {
         int bucket, position;
-        SymbolInfo *parent;
-        SymbolInfo* s =  this->scopeLookupAdvanced(sinfo->getSymbolName(), bucket, position, &parent);
+        SymbolInfo* parent;
+        SymbolInfo* s =  this->scopeLookupAdvanced(sinfo->getSymbolName(), bucket, position, parent);
         if(SymbolInfo::isEquivalent(s, sinfo)) {
             cout << sinfo->symbolToString() + " already exists in current ScopeTable\n\n";
             return false;
         }
-        if(parent == NULL) this->symbolsHashTable[bucket] = sinfo, cout << "no parent\n\n";
-//        else  parent->setNextSymbol(sinfo);
-//        cout << "Inserted in ScopeTable# " << this->id << " " << "at position " << bucket << ", " << position << "\n\n";
+        if(parent == NULL) this->symbolsHashTable[bucket] = sinfo;
+        else  parent->setNextSymbol(sinfo);
+        cout << "Inserted in ScopeTable# " << this->id << " " << "at position " << bucket << ", " << position << "\n\n";
         return true;
     }
 
@@ -140,6 +140,7 @@ public:
             cout << "Deleted Entry " << bucket << ", " << pos << " from current ScopeTable\n\n";
             return true;
         }
+        cout << symbolName << " not found\n\n";
         return false;
     }
 
@@ -153,8 +154,7 @@ public:
     //         -> returns null
     //         -> the bucket and position of where the symbol object would belong to
     //         -> reference to the last accessed symbol object
-    // fix this <--------------------------------------------------------------------------------
-    SymbolInfo* scopeLookupAdvanced(string symbolName, int &b, int &p, SymbolInfo *parent) {
+    SymbolInfo* scopeLookupAdvanced(string symbolName, int &b, int &p, SymbolInfo*& parent) {
         int bucket = this->scopeHash(symbolName);
         int pos = 0;
         SymbolInfo *par = NULL;
@@ -176,10 +176,6 @@ public:
         b = bucket;
         p = pos;
         parent = par;
-        if(parent == NULL) {
-            cout << "Advanced parent is NULL\n\n";
-        }
-        cout << "Not found\n\n";
         return NULL;
     }
 
@@ -254,9 +250,12 @@ public:
     }
 
     ~SymbolTable() {
-        // fix this <--------------------------------------------------------------------------------
-        // delete all parents
-        delete currentScope;
+        ScopeTable *cur = this->currentScope;
+        while(cur != NULL) {
+            ScopeTable *prv = this->currentScope->getParentScope();
+            delete cur;
+            cur = prv;    
+        }
     }
 
     void enterScope() {
@@ -284,7 +283,7 @@ public:
     SymbolInfo* lookup(string symbolName){
         ScopeTable *cur = this->currentScope;
         while(cur != NULL) {
-            SymbolInfo *ret = cur->scopeLookup(symbolName);             // scopeLookup() prints a "Found" msg
+            SymbolInfo *ret = cur->scopeLookup(symbolName);
             if(ret != NULL) return ret;
             cur = cur->getParentScope();
         }
