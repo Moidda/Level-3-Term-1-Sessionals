@@ -5,7 +5,8 @@ using namespace std;
 
 int main() {
 
-    freopen("input.txt", "r", stdin);
+    freopen("alu.txt", "r", stdin);
+    freopen("vorta.txt", "w", stdout);
 
     int totalBucket;
     string query;
