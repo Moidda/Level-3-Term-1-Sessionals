@@ -10,6 +10,7 @@
     INPUT_PROMPT2    DB CR, LF, 'OPERATOR: $'
     INPUT_PROMPT3    DB CR, LF, 'OPERAND2: $'
     OUTPUT_PROMPT   DB CR, LF, 'OUTPUT =  $'
+    WRONG_OPERATOR  DB CR, LF, 'WRONG OPERATOR$'
     X DW ?
     Y DW ?
     Z DW ?
@@ -46,7 +47,14 @@ MAIN PROC
         JE INPUT3
         CMP CHAR, '/'
         JE INPUT3
-        JMP INPUT2
+        CMP CHAR, 'q'
+        JE DOS_EXIT
+
+        LEA DX, WRONG_OPERATOR
+        MOV AH, 9
+        INT 21H
+        JMP DOS_EXIT
+        
 
     INPUT3:
         LEA DX, INPUT_PROMPT3               ; PROMPT MSG
@@ -97,7 +105,7 @@ MAIN PROC
         MOV AX, Z
         CALL PRINT_INT    
 
-; DOX exit
+DOS_EXIT:
     MOV AH, 4CH
     INT 21H
 
