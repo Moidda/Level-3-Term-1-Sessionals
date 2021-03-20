@@ -92,11 +92,17 @@ MAIN PROC
         JMP PRINTZ
 
     DIVISION:
-        XOR DX, DX              ; CLEAR OUT DX
-        MOV AX, X               ; DX:AX = 00:X
-        IDIV Y                  ; (DX:AX) / DIVISOR -> QUOTIENT IN AX, REMAINDER IN DX
-        MOV Z, AX               ; => QUOTIENT IN Z
-        JMP PRINTZ
+        CMP X, 0                    ; IF X < 0
+        JGE DIVISION_NEXT_STEP      ; THEN
+        NEG X                       ; X *= -1
+        NEG Y                       ; Y *= -1
+
+        DIVISION_NEXT_STEP:
+            XOR DX, DX              ; CLEAR OUT DX
+            MOV AX, X               ; DX:AX = 00:X
+            IDIV Y                  ; (DX:AX) / DIVISOR -> QUOTIENT IN AX, REMAINDER IN DX
+            MOV Z, AX               ; => QUOTIENT IN Z
+            JMP PRINTZ
 
     PRINTZ:
         LEA DX, OUTPUT_PROMPT
