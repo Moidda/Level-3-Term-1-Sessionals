@@ -25,7 +25,7 @@ void yyerror(char*);
 /********************** Helper Functions **********************/
 
 void printLog(string matchedRule, string matchedText) {
-    logOut << "At line no: " << lineCount << " " << matchedRule << endl << endl;
+    logOut << "Line " << lineCount << ": " << matchedRule << endl << endl;
     logOut << matchedText << endl << endl;
 }
 
@@ -49,35 +49,36 @@ void printLog(string matchedRule, string matchedText) {
 
 %%
 start : program {
-                string name = $<symbolInfo>1->getSymbolName();
-                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
-                printLog("start : program", name);
+                // string name = $<symbolInfo>1->getSymbolName();
+                // $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("start : program", "");
         }
         ;
 
 program : program unit {
-                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName();                  // program
+                name += "\n" + $<symbolInfo>2->getSymbolName();                  // unit
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("program : program unit", name);
         }
         | unit {
-                string name = $<symbolInfo>1->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName();                  //unit
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("program : unit", name);       
         }
         ;
         
 unit : var_declaration {
-                string name = $<symbolInfo>1->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName();                  // var_declaration
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("unit : var_declaration", name);
         }
         | func_declaration {
-                string name = $<symbolInfo>1->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName();                  // func_declaration
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("unit : func_declaration", name);
         }
-        | func_definition {
+        | func_definition {                                                     // func_definition
                 string name = $<symbolInfo>1->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("unit : func_definition", name);       
@@ -85,24 +86,34 @@ unit : var_declaration {
         ;
      
 func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON {
-                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + "(" + $<symbolInfo>4->getSymbolName() + ");";
+                string name = $<symbolInfo>1->getSymbolName();                   // type_specifier
+                name += " " + $<symbolInfo>2->getSymbolName();                   // ID
+                name += "(" + $<symbolInfo>4->getSymbolName() + ");";           // (parameter_list);
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON", name);
         }
         | type_specifier ID LPAREN RPAREN SEMICOLON {
-                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + "();";
+                string name = $<symbolInfo>1->getSymbolName();                   // type_specifier
+                name += " " + $<symbolInfo>2->getSymbolName();                   // ID
+                name += "();";                                                   // ();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("func_declaration : type_specifier ID LPAREN RPAREN SEMICOLON", name);
         }
         ;
                  
 func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement {
-                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + "(" + $<symbolInfo>4->getSymbolName() + ")" + $<symbolInfo>6->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName();                  // type_specifier 
+                name += " " + $<symbolInfo>2->getSymbolName();                  // ID
+                name += "(" + $<symbolInfo>4->getSymbolName() + ")";            // (parameter_list)
+                name += $<symbolInfo>6->getSymbolName();                       // compound_statement
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement", name);
         }
         | type_specifier ID LPAREN RPAREN compound_statement {
-                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + "()" + $<symbolInfo>5->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName();                  // type_specifier
+                name += " " + $<symbolInfo>2->getSymbolName();                  // ID
+                name += "()";                                                   // ()
+                name += $<symbolInfo>5->getSymbolName();                        // compound_statement
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("func_definition : type_specifier ID LPAREN RPAREN compound_statement", name);
         }
@@ -110,17 +121,20 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statem
 
 
 parameter_list : parameter_list COMMA type_specifier ID {
-                string name = $<symbolInfo>1->getSymbolName() + ", " + $<symbolInfo>3->getSymbolName() + $<symbolInfo>4->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName();                  // parameter_list
+                name += "," + $<symbolInfo>3->getSymbolName();                  // ,type_specifier
+                name += " " + $<symbolInfo>4->getSymbolName();                  // ID
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("parameter_list : parameter_list COMMA type_specifier ID", name);
         }
         | parameter_list COMMA type_specifier {
-                string name = $<symbolInfo>1->getSymbolName() + ", " + $<symbolInfo>3->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName();                  // parameter_list
+                name += "," + $<symbolInfo>3->getSymbolName();                  // ,type_specifier
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("parameter_list : parameter_list COMMA type_specifier", name);
         }
         | type_specifier ID {   
-                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName() + " " + $<symbolInfo>2->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("parameter_list : type_specifier ID", name);
         }
@@ -131,24 +145,25 @@ parameter_list : parameter_list COMMA type_specifier ID {
         }
         ;
 
-var_declaration : type_specifier declaration_list SEMICOLON {
-                string name = ($<symbolInfo>1)->getSymbolName() + " " + ($<symbolInfo>2)->getSymbolName() + ";" ;
+var_declaration : type_specifier declaration_list SEMICOLON {                   
+                string name = ($<symbolInfo>1)->getSymbolName();                // type_specifier
+                name += " " + ($<symbolInfo>2)->getSymbolName() + ";";          // declaration_list;
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("var_declaration : type_specifier declaration_list SEMICOLON", name);
         }
         ;
 
-type_specifier  : INT {
+type_specifier : INT {
                 $<symbolInfo>$ = new SymbolInfo("int", "NON_TERMINAL");
-                printLog("type_specifier: INT", "int");
+                printLog("type_specifier : INT", "int");
         }
         | FLOAT {
                 $<symbolInfo>$ = new SymbolInfo("float", "NON_TERMINAL");
-                printLog("type_specifier: FLOAT", "float");
+                printLog("type_specifier : FLOAT", "float");
         }
         | VOID {
                 $<symbolInfo>$ = new SymbolInfo("void", "NON_TERMINAL");
-                printLog("type_specifier: VOID", "void");
+                printLog("type_specifier : VOID", "void");
         }
         ;
 
@@ -158,14 +173,16 @@ declaration_list : declaration_list COMMA ID {
                 printLog("declaration_list : declaration_list COMMA ID", name);
             }
             | declaration_list COMMA ID LTHIRD CONST_INT RTHIRD {
-                string name = ($<symbolInfo>1)->getSymbolName() + "," + ($<symbolInfo>3)->getSymbolName() + "[" + ($<symbolInfo>5)->getSymbolName() + "]";
+                string name = ($<symbolInfo>1)->getSymbolName() + ",";                  // declaration_list, 
+                name += ($<symbolInfo>3)->getSymbolName();                              // ID
+                name += "[" + ($<symbolInfo>5)->getSymbolName() + "]";                  // [CONST_INT]
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("declaration_list : declaration_list COMMA ID", name);
             }
             | ID {
                 string name = ($<symbolInfo>1)->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
-                printLog("declaration_list: ID", name);
+                printLog("declaration_list : ID", name);
             }
             | ID LTHIRD CONST_INT RTHIRD {
                 string name = ($<symbolInfo>1)->getSymbolName() + "[" + ($<symbolInfo>3)->getSymbolName() + "]";
@@ -181,7 +198,7 @@ statements : statement {
                 printLog("statements : statement", name);
         }
         | statements statement {
-                string name = $<symbolInfo>1->getSymbolName() + " " + $<symbolInfo>2->getSymbolName(); 
+                string name = $<symbolInfo>1->getSymbolName() + "\n" + $<symbolInfo>2->getSymbolName(); 
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("statements : statements statement", name);
         }
@@ -204,27 +221,31 @@ statement : var_declaration {
                 printLog("statement : compound_statement", name);
         }
         | FOR LPAREN expression_statement expression_statement expression RPAREN statement {
-                string name = "for(" + $<symbolInfo>3->getSymbolName() + $<symbolInfo>4->getSymbolName() + $<symbolInfo>5->getSymbolName() + ") " + $<symbolInfo>7->getSymbolName();
+                string name = "for(" + $<symbolInfo>3->getSymbolName();                         // for(expression_statement
+                name += $<symbolInfo>4->getSymbolName();                                        // expression_statement
+                name += $<symbolInfo>5->getSymbolName() + ")";                                  // expression)            
+                name += $<symbolInfo>7->getSymbolName();                                        // statement
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("statement : FOR LPAREN expression_statement expression_statement expression RPAREN statement", name);
         }
-        | IF LPAREN expression RPAREN statement {
-                string name = "if(" + $<symbolInfo>3->getSymbolName() + ") " + $<symbolInfo>5->getSymbolName();
+        | IF LPAREN expression RPAREN statement %prec LOWER_THAN_ELSE {
+                string name = "if (" + $<symbolInfo>3->getSymbolName() + ")" + $<symbolInfo>5->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("statement : IF LPAREN expression RPAREN statement", name);      
         }
         | IF LPAREN expression RPAREN statement ELSE statement {
-                string name = "if(" + $<symbolInfo>3->getSymbolName() + ") " + $<symbolInfo>5->getSymbolName() + " else " + $<symbolInfo>7->getSymbolName();
+                string name = "if (" + $<symbolInfo>3->getSymbolName() + ")" + $<symbolInfo>5->getSymbolName();        // if(expression) statement
+                name += "\nelse\n" + $<symbolInfo>7->getSymbolName();                                                    // else statement
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("statement : IF LPAREN expression RPAREN statement ELSE statement", name);
         }
         | WHILE LPAREN expression RPAREN statement {
-                string name = "while(" + $<symbolInfo>3->getSymbolName() + ") " + $<symbolInfo>5->getSymbolName();
+                string name = "while (" + $<symbolInfo>3->getSymbolName() + ")" + $<symbolInfo>5->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("statement : WHILE LPAREN expression RPAREN statement", name);
         }
         | PRINTLN LPAREN ID RPAREN SEMICOLON {
-                string name = "println(" + $<symbolInfo>3->getSymbolName() + ");";
+                string name = "printf(" + $<symbolInfo>3->getSymbolName() + ");";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("statement : PRINTLN LPAREN ID RPAREN SEMICOLON", name);
         }
@@ -237,7 +258,7 @@ statement : var_declaration {
       
 
 compound_statement : LCURL statements RCURL {
-                string name = "{ " + $<symbolInfo>2->getSymbolName() + " }";
+                string name = "{\n" + $<symbolInfo>2->getSymbolName() + "\n}";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("compound_statement : LCURL statements RCURL", name);
         }
@@ -252,7 +273,7 @@ expression_statement : SEMICOLON {
                 printLog("expression_statement : SEMICOLON", ";");
             }
         | expression SEMICOLON {
-                string name = $<symbolInfo>1->getSymbolName() + " ;";
+                string name = $<symbolInfo>1->getSymbolName() + ";";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("expression_statement : expression SEMICOLON", name);
         }
@@ -276,7 +297,7 @@ expression : logic_expression {
                 printLog("expression : logic_expression", name);
         }
         | variable ASSIGNOP logic_expression {
-                string name = $<symbolInfo>1->getSymbolName() + " = " + $<symbolInfo>3->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName() + "=" + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("expression : variable ASSIGNOP logic_expression", name);   
         }
@@ -296,12 +317,12 @@ logic_expression : rel_expression {
             
 rel_expression  : simple_expression {
                 $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
-                printLog("rel_expression  : simple_expression", $<symbolInfo>1->getSymbolName());
+                printLog("rel_expression : simple_expression", $<symbolInfo>1->getSymbolName());
         }
         | simple_expression RELOP simple_expression {
                 string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
-                printLog("rel_expression  : simple_expression RELOP simple_expression", name);
+                printLog("rel_expression : simple_expression RELOP simple_expression", name);
         }
         ;
                 
@@ -355,7 +376,7 @@ factor : variable {
                 printLog("factor : ID LPAREN argument_list RPAREN", name);
         }
         | LPAREN expression RPAREN {
-                string name = "(" + $<symbolInfo>2->getSymbolName() + ")";       
+                string name = "(" + $<symbolInfo>2->getSymbolName() + ")";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("factor : LPAREN expression RPAREN", name);      
         }
@@ -385,12 +406,14 @@ argument_list : arguments {
                 printLog("argument_list : arguments", $<symbolInfo>1->getSymbolName());
         }
         | {
-                // what to do ????
+                // thik ase ????????????????????????????????????????????????????????????????????????????
+                $<symbolInfo>$ = new SymbolInfo("", "NON_TERMINAL");
+                printLog("argument_list : <epsilon-production>", "");
         }
         ;
         
 arguments : arguments COMMA logic_expression {
-                string name = $<symbolInfo>1->getSymbolName() + ", " + $<symbolInfo>3->getSymbolName();
+                string name = $<symbolInfo>1->getSymbolName() + "," + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("arguments : arguments COMMA logic_expression", name);
         }
