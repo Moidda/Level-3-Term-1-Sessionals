@@ -48,12 +48,95 @@ void printLog(string matchedRule, string matchedText) {
 %nonassoc ELSE
 
 %%
+start : program {
+                string name = $<symbolInfo>1->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("start : program", name);
+        }
+        ;
+
+program : program unit {
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("program : program unit", name);
+        }
+        | unit {
+                string name = $<symbolInfo>1->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("program : unit", name);       
+        }
+        ;
+        
+unit : var_declaration {
+                string name = $<symbolInfo>1->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("unit : var_declaration", name);
+        }
+        | func_declaration {
+                string name = $<symbolInfo>1->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("unit : func_declaration", name);
+        }
+        | func_definition {
+                string name = $<symbolInfo>1->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("unit : func_definition", name);       
+        }
+        ;
+     
+func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON {
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + "(" + $<symbolInfo>4->getSymbolName() + ");";
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("func_declaration : type_specifier ID LPAREN parameter_list RPAREN SEMICOLON", name);
+        }
+        | type_specifier ID LPAREN RPAREN SEMICOLON {
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + "();";
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("func_declaration : type_specifier ID LPAREN RPAREN SEMICOLON", name);
+        }
+        ;
+                 
+func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement {
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + "(" + $<symbolInfo>4->getSymbolName() + ")" + $<symbolInfo>6->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("func_definition : type_specifier ID LPAREN parameter_list RPAREN compound_statement", name);
+        }
+        | type_specifier ID LPAREN RPAREN compound_statement {
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + "()" + $<symbolInfo>5->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("func_definition : type_specifier ID LPAREN RPAREN compound_statement", name);
+        }
+        ;                               
+
+
+parameter_list : parameter_list COMMA type_specifier ID {
+                string name = $<symbolInfo>1->getSymbolName() + ", " + $<symbolInfo>3->getSymbolName() + $<symbolInfo>4->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("parameter_list : parameter_list COMMA type_specifier ID", name);
+        }
+        | parameter_list COMMA type_specifier {
+                string name = $<symbolInfo>1->getSymbolName() + ", " + $<symbolInfo>3->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("parameter_list : parameter_list COMMA type_specifier", name);
+        }
+        | type_specifier ID {   
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("parameter_list : type_specifier ID", name);
+        }
+        | type_specifier {
+                string name = $<symbolInfo>1->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("parameter_list : type_specifier", name);
+        }
+        ;
+
 var_declaration : type_specifier declaration_list SEMICOLON {
                 string name = ($<symbolInfo>1)->getSymbolName() + " " + ($<symbolInfo>2)->getSymbolName() + ";" ;
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("var_declaration : type_specifier declaration_list SEMICOLON", name);
         }
-         ;
+        ;
 
 type_specifier  : INT {
                 $<symbolInfo>$ = new SymbolInfo("int", "NON_TERMINAL");
@@ -205,36 +288,117 @@ logic_expression : rel_expression {
                 printLog("logic_expression : rel_expression", name);       
         }
         | rel_expression LOGICOP rel_expression {
-                string name = $<symbolInfo>1->getSymbolName() + 
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
-                printLog("logic_expression : rel_expression", name);   
+                printLog("logic_expression : rel_expression LOGICOP rel_expression", name);   
         }
         ;
             
-rel_expression  : simple_expression 
-        | simple_expression RELOP simple_expression 
+rel_expression  : simple_expression {
+                $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
+                printLog("rel_expression  : simple_expression", $<symbolInfo>1->getSymbolName());
+        }
+        | simple_expression RELOP simple_expression {
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + $<symbolInfo>3->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("rel_expression  : simple_expression RELOP simple_expression", name);
+        }
         ;
                 
-simple_expression : term 
-          | simple_expression ADDOP term 
-          ;
+simple_expression : term {
+                $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
+                printLog("simple_expression : term", $<symbolInfo>1->getSymbolName());
+        }
+        | simple_expression ADDOP term {
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + $<symbolInfo>3->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("simple_expression : term", name);
+        }
+        ;
                     
-term :  unary_expression
-     |  term MULOP unary_expression
-     ;
+term : unary_expression {
+                $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
+                printLog("term : unary_expression", $<symbolInfo>1->getSymbolName());       
+        }
+        | term MULOP unary_expression {
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + $<symbolInfo>3->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("term : term MULOP unary_expression", name);
+        }
+        ;
 
-unary_expression : ADDOP unary_expression  
-         | NOT unary_expression 
-         | factor 
-         ;
+unary_expression : ADDOP unary_expression {
+                string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("unary_expression : ADDOP unary_expression", name);       
+        }
+        | NOT unary_expression {
+                string name = "!" + $<symbolInfo>2->getSymbolName();       
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("unary_expression : NOT unary_expression", name);
+        }
+        | factor {
+                string name = $<symbolInfo>1->getSymbolName();       
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("unary_expression : factor", name);
+        }
+        ;
     
-factor  : variable 
-    | LPAREN expression RPAREN
-    | CONST_INT 
-    | CONST_FLOAT
-    | variable INCOP 
-    | variable DECOP
-    ;
+factor : variable {
+                string name = $<symbolInfo>1->getSymbolName();       
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("factor : variable", name);       
+        }
+        | ID LPAREN argument_list RPAREN {
+                string name = $<symbolInfo>1->getSymbolName() + "(" + $<symbolInfo>3->getSymbolName() + ")";
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("factor : ID LPAREN argument_list RPAREN", name);
+        }
+        | LPAREN expression RPAREN {
+                string name = "(" + $<symbolInfo>2->getSymbolName() + ")";       
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("factor : LPAREN expression RPAREN", name);      
+        }
+
+        | CONST_INT {
+                $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
+                printLog("factor : CONST_INT", $<symbolInfo>1->getSymbolName());
+        }
+        | CONST_FLOAT {
+                $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
+                printLog("factor : CONST_FLOAT", $<symbolInfo>1->getSymbolName());
+        }
+        | variable INCOP {
+                string name = $<symbolInfo>1->getSymbolName() + "++";
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("factor : variable INCOP", name);
+        }
+        | variable DECOP {
+                string name = $<symbolInfo>1->getSymbolName() + "--";
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("factor : variable DECOP", name);
+        }
+        ;
+
+argument_list : arguments {
+                $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
+                printLog("argument_list : arguments", $<symbolInfo>1->getSymbolName());
+        }
+        | {
+                // what to do ????
+        }
+        ;
+        
+arguments : arguments COMMA logic_expression {
+                string name = $<symbolInfo>1->getSymbolName() + ", " + $<symbolInfo>3->getSymbolName();
+                $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
+                printLog("arguments : arguments COMMA logic_expression", name);
+        }
+        | logic_expression {
+                $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
+                printLog("arguments : logic_expression", $<symbolInfo>1->getSymbolName());       
+        }
+        ;
 %%
 
 
