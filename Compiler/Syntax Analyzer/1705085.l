@@ -49,25 +49,25 @@ UNTERMINATED_STRING {MULTI_STRING_BODY}*([\n]|[^\n"]*[^\\"][\n])
 
 %%
 {WHITESPACE}    {}
-{NEWLINE}       {lineCount++;       }
+{NEWLINE}       {   lineCount++;       }
 
-"if"            {return IF;         }
-"else"          {return ELSE;       }
-"for"           {return FOR;        }
-"while"         {return WHILE;      }
-"do"            {return DO;         }
-"break"         {return BREAK;      }
-"int"           {return INT;        }
-"char"          {return CHAR;       }
-"float"         {return FLOAT;      }
-"double"        {return DOUBLE;     }
-"void"          {return VOID;       }
-"return"        {return RETURN;     }
-"switch"        {return SWITCH;     }
-"case"          {return CASE;       }
-"default"       {return DEFAULT;    }
-"continue"      {return CONTINUE;   }
-"println"       {return PRINTLN;    }
+"if"            {   return IF;         }
+"else"          {   return ELSE;       }
+"for"           {   return FOR;        }
+"while"         {   return WHILE;      }
+"do"            {   return DO;         }
+"break"         {   return BREAK;      }
+"int"           {   return INT;        }
+"char"          {   return CHAR;       }
+"float"         {   return FLOAT;      }
+"double"        {   return DOUBLE;     }
+"void"          {   return VOID;       }
+"return"        {   return RETURN;     }
+"switch"        {   return SWITCH;     }
+"case"          {   return CASE;       }
+"default"       {   return DEFAULT;    }
+"continue"      {   return CONTINUE;   }
+"println"       {   return PRINTLN;    }
 
 "+"|"-"         {
                     yylval.symbolInfo = new SymbolInfo(yytext, "ADDOP"); 
@@ -77,26 +77,28 @@ UNTERMINATED_STRING {MULTI_STRING_BODY}*([\n]|[^\n"]*[^\\"][\n])
                     yylval.symbolInfo = new SymbolInfo(yytext, "MULOP");
                     return MULOP;      
                 }
-"++"            {return INCOP;      }
-"--"            {return DECOP;      }
+"++"            {   return INCOP;      }
+"--"            {   return DECOP;      }
 
 "<"|"<="|">"|">="|"=="|"!=" {
+                    yylval.symbolInfo = new SymbolInfo(yytext, "RELOP");
                     return RELOP;      
                 }
-"="             {return ASSIGNOP;   }
+"="             {   return ASSIGNOP;   }
 "&&"|"||"       {
+                    yylval.symbolInfo = new SymbolInfo(yytext, "LOGICOP");
                     return LOGICOP;    
                 }
-"!"             {return NOT;        }
+"!"             {   return NOT;        }
 
-"("             {return LPAREN;     }
-")"             {return RPAREN;     }
-"{"             {return LCURL;      }
-"}"             {return RCURL;      }
-"["             {return LTHIRD;     }
-"]"             {return RTHIRD;     }
-","             {return COMMA;      }
-";"             {return SEMICOLON;  }
+"("             {   return LPAREN;     }
+")"             {   return RPAREN;     }
+"{"             {   return LCURL;      }
+"}"             {   return RCURL;      }
+"["             {   return LTHIRD;     }
+"]"             {   return RTHIRD;     }
+","             {   return COMMA;      }
+";"             {   return SEMICOLON;  }
 
 
 {INTEGER}       {
