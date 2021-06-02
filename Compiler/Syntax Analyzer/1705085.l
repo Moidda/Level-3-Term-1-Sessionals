@@ -67,7 +67,7 @@ UNTERMINATED_STRING {MULTI_STRING_BODY}*([\n]|[^\n"]*[^\\"][\n])
 "case"          {   return CASE;       }
 "default"       {   return DEFAULT;    }
 "continue"      {   return CONTINUE;   }
-"println"       {   return PRINTLN;    }
+"printf"        {   return PRINTLN;    }
 
 "+"|"-"         {
                     yylval.symbolInfo = new SymbolInfo(yytext, "ADDOP"); 
