@@ -49,8 +49,8 @@ void printError(string errorMsg) {
 void insertVarDeclaration(string variableType) {
         if(variableType == "void") {
                 printError("Variable type cannot be void");
+                variableType = FLOAT_STR;                                 // treating void variables as FLOAT henceforth
         }
-        logOut << "Iterating through var_list ..." << endl; 
         for(int i = 0; i < var_list.size(); i++) {
                 SymbolInfo* sinfo = var_list[i];
                 sinfo->setReturnType(variableType);
@@ -61,6 +61,12 @@ void insertVarDeclaration(string variableType) {
                 }
         }
         var_list.clear();    
+}
+
+void voidChecking(SymbolInfo* sinfo) {
+        if(sinfo->getReturnType() != VOID_STR) return;
+        printError("Void function used in expression");
+        sinfo->setReturnType(FLOAT_STR);                                // treating void as FLOAT henceforth
 }
 /**************************************************************/
 %}
@@ -341,8 +347,10 @@ variable : ID {
                         printError("Undeclared variable " + name);
                 }
                 else {
-                        logOut << "Variable SymbolInfo Content:" << endl;
-                        logOut << sinfo->getSymbolContent() << endl;
+                        // copy the contents of symbolInfo stored in symbol table into $$
+                        $<symbolInfo>$->setSymbolType(sinfo->getSymbolType());
+                        $<symbolInfo>$->setReturnType(sinfo->getReturnType());
+                        $<symbolInfo>$->setArraySize(sinfo->getArraySize());
                 }
         }
         | ID LTHIRD expression RTHIRD {
@@ -350,13 +358,21 @@ variable : ID {
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("variable : ID LTHIRD expression RTHIRD", name);
         
+                // find the symbolInfo with the name of ID
                 SymbolInfo* sinfo = symbolTable.lookup($<symbolInfo>1->getSymbolName());
                 if(sinfo == NULL) {
                         printError("Undeclared variable " + name);
                 }
                 else {
-                        logOut << "Variable SymbolInfo Content:" << endl;
-                        logOut << sinfo->getSymbolContent() << endl;
+                        // copy the contents of symbolInfo from symbolTable into $$
+                        $<symbolInfo>$->setSymbolType(sinfo->getSymbolType());
+                        $<symbolInfo>$->setReturnType(sinfo->getReturnType());
+                        $<symbolInfo>$->setArraySize(sinfo->getArraySize());
+
+                        // check if expression has returnType of int or not
+                        if($<symbolInfo>3->getReturnType() != INT_STR) {
+                                printError("Expression inside third brackets not an integer");
+                        }
                 }
         }
         ;
@@ -365,11 +381,18 @@ expression : logic_expression {
                 string name = $<symbolInfo>1->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("expression : logic_expression", name);
+
+                voidChecking($<symbolInfo>1);
+                $<symbolInfo>$->setReturnType($<symbolInfo>1->getReturnType());
         }
         | variable ASSIGNOP logic_expression {
                 string name = $<symbolInfo>1->getSymbolName() + "=" + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("expression : variable ASSIGNOP logic_expression", name);                
+
+                voidChecking($<symbolInfo>3);
+                if($<symbolInfo>1->getReturnType() != $<symbolInfo>3->getReturnType()) printError("Type Mismatch");
+                $<symbolInfo>$->setReturnType($<symbolInfo>3->getReturnType());
         }
         ;
             
@@ -377,61 +400,118 @@ logic_expression : rel_expression {
                 string name = $<symbolInfo>1->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("logic_expression : rel_expression", name);       
+        
+                voidChecking($<symbolInfo>1);
+                $<symbolInfo>$->setReturnType($<symbolInfo>1->getReturnType());
         }
         | rel_expression LOGICOP rel_expression {
                 string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("logic_expression : rel_expression LOGICOP rel_expression", name);   
+        
+                voidChecking($<symbolInfo>1);
+                voidChecking($<symbolInfo>3);
+                $<symbolInfo>$->setReturnType(INT_STR);                 // type casting, LOGICOP should return int
         }
         ;
             
 rel_expression  : simple_expression {
                 $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
                 printLog("rel_expression : simple_expression", $<symbolInfo>1->getSymbolName());
+        
+                voidChecking($<symbolInfo>1);
+                $<symbolInfo>$->setReturnType($<symbolInfo>1->getReturnType());
         }
         | simple_expression RELOP simple_expression {
                 string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("rel_expression : simple_expression RELOP simple_expression", name);
-        }
+        
+                voidChecking($<symbolInfo>1);
+                voidChecking($<symbolInfo>3);
+                $<symbolInfo>$->setReturnType(INT_STR);                 // type casting, RELOP should return int
+        }       
         ;
                 
 simple_expression : term {
                 $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
                 printLog("simple_expression : term", $<symbolInfo>1->getSymbolName());
+        
+                voidChecking($<symbolInfo>1);
+                $<symbolInfo>$->setReturnType($<symbolInfo>1->getReturnType());
         }
         | simple_expression ADDOP term {
                 string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("simple_expression : term", name);
+        
+                voidChecking($<symbolInfo>1);
+                voidChecking($<symbolInfo>3);
+                
+                if($<symbolInfo>1->getReturnType() == FLOAT_STR or $<symbolInfo>3->getReturnType() == FLOAT_STR)
+                        $<symbolInfo>$->setReturnType(FLOAT_STR); 
+                else
+                        $<symbolInfo>$->setReturnType(INT_STR);
         }
         ;
                     
 term : unary_expression {
                 $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
                 printLog("term : unary_expression", $<symbolInfo>1->getSymbolName());       
+        
+                voidChecking($<symbolInfo>1);
+                $<symbolInfo>$->setReturnType($<symbolInfo>1->getReturnType());
         }
         | term MULOP unary_expression {
                 string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName() + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("term : term MULOP unary_expression", name);
+        
+                voidChecking($<symbolInfo>1);
+                voidChecking($<symbolInfo>3);
+
+                if($<symbolInfo>2->getSymbolName() == "%") {
+                        if($<symbolInfo>1->getReturnType() != INT_STR) printError("Non-Integer operand on modulus operator");
+                        if($<symbolInfo>3->getReturnType() != INT_STR) printError("Non-Integer operand on modulus operator");
+                        if($<symbolInfo>3->getSymbolName() == "0") printError("Modulus by Zero");
+                }
+                else {
+                        if($<symbolInfo>1->getReturnType() == FLOAT_STR or $<symbolInfo>3->getReturnType() == FLOAT_STR)
+                                $<symbolInfo>$->setReturnType(FLOAT_STR);
+                        else
+                                $<symbolInfo>$->setReturnType(INT_STR);
+                }
         }
         ;
 
 unary_expression : ADDOP unary_expression {
                 string name = $<symbolInfo>1->getSymbolName() + $<symbolInfo>2->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
-                printLog("unary_expression : ADDOP unary_expression", name);       
+                printLog("unary_expression : ADDOP unary_expression", name);
+
+                voidChecking($<symbolInfo>2);
+                $<symbolInfo>$->setReturnType($<symbolInfo>2->getReturnType());
+
         }
         | NOT unary_expression {
                 string name = "!" + $<symbolInfo>2->getSymbolName();       
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("unary_expression : NOT unary_expression", name);
+        
+                voidChecking($<symbolInfo>1);
+                $<symbolInfo>$->setReturnType(INT_STR);                         // type casting, NOT should return INT
         }
         | factor {
                 string name = $<symbolInfo>1->getSymbolName();       
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("unary_expression : factor", name);
+        
+                voidChecking($<symbolInfo>1);
+                $<symbolInfo>$->setReturnType( $<symbolInfo>1->getReturnType() );
+                
+                if($<symbolInfo>1->getSymbolName() == "38") {
+                        cout << $<symbolInfo>$->getReturnType() << endl;
+                }
         }
         ;
     
@@ -439,35 +519,53 @@ factor : variable {
                 string name = $<symbolInfo>1->getSymbolName();       
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("factor : variable", name);       
+        
+                $<symbolInfo>$->setReturnType( $<symbolInfo>1->getReturnType() );
         }
         | ID LPAREN argument_list RPAREN {
                 string name = $<symbolInfo>1->getSymbolName() + "(" + $<symbolInfo>3->getSymbolName() + ")";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("factor : ID LPAREN argument_list RPAREN", name);
+        
+                // foo(x, y, z);
+                // function has to be declared
+                // i.e foo has to exist as a function in scopetable
+                // foo has to be defined
+                
         }
         | LPAREN expression RPAREN {
                 string name = "(" + $<symbolInfo>2->getSymbolName() + ")";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
-                printLog("factor : LPAREN expression RPAREN", name);      
-        }
+                printLog("factor : LPAREN expression RPAREN", name);
 
+                voidChecking($<symbolInfo>2);
+                $<symbolInfo>$->setReturnType( $<symbolInfo>2->getReturnType() );  
+        }
         | CONST_INT {
                 $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
                 printLog("factor : CONST_INT", $<symbolInfo>1->getSymbolName());
+                
+                $<symbolInfo>$->setReturnType(INT_STR);
         }
         | CONST_FLOAT {
                 $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
                 printLog("factor : CONST_FLOAT", $<symbolInfo>1->getSymbolName());
+        
+                $<symbolInfo>$->setReturnType(FLOAT_STR);
         }
         | variable INCOP {
                 string name = $<symbolInfo>1->getSymbolName() + "++";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("factor : variable INCOP", name);
+        
+                $<symbolInfo>$->setReturnType($<symbolInfo>1->getReturnType());
         }
         | variable DECOP {
                 string name = $<symbolInfo>1->getSymbolName() + "--";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("factor : variable DECOP", name);
+        
+                $<symbolInfo>$->setReturnType($<symbolInfo>1->getReturnType());
         }
         ;
 
@@ -486,10 +584,14 @@ arguments : arguments COMMA logic_expression {
                 string name = $<symbolInfo>1->getSymbolName() + "," + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("arguments : arguments COMMA logic_expression", name);
+        
+                voidChecking($<symbolInfo>3);
         }
         | logic_expression {
                 $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
-                printLog("arguments : logic_expression", $<symbolInfo>1->getSymbolName());       
+                printLog("arguments : logic_expression", $<symbolInfo>1->getSymbolName());
+
+                voidChecking($<symbolInfo>1); 
         }
         ;
 %%
