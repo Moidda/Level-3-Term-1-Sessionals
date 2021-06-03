@@ -9,12 +9,23 @@ int yylex(void);
 extern FILE *yyin;
 
 
+// SymbolInfo symbolType
+const string VARIABLE_STR = "variable";
+const string FUNCTION_STR = "function";
+const string ARRAY_STR = "array";
+
+// SymbolInfo returnType
+const string INT_STR = "int";
+const string FLOAT_STR = "float";
+const string VOID_STR = "void";
+
 int lineCount = 1;
 int errorCount = 0;
 int scopeCount = 1;
 
 SymbolTable symbolTable(7);
-SymbolInfo* symbolInfo;
+
+vector<SymbolInfo*> var_list;
 
 FILE* input;
 ofstream logOut;
@@ -29,8 +40,29 @@ void printLog(string matchedRule, string matchedText) {
     logOut << matchedText << endl << endl;
 }
 
-/**************************************************************/
+void printError(string errorMsg) {
+        errorOut << "Error at line " << lineCount << ": " << errorMsg << endl << endl;
+        logOut << "Error at line " << lineCount << ": " << errorMsg << endl << endl;
+        errorCount++;
+}
 
+void insertVarDeclaration(string variableType) {
+        if(variableType == "void") {
+                printError("Variable type cannot be void");
+        }
+        logOut << "Iterating through var_list ..." << endl; 
+        for(int i = 0; i < var_list.size(); i++) {
+                SymbolInfo* sinfo = var_list[i];
+                sinfo->setReturnType(variableType);
+                logOut << sinfo->getSymbolContent() << endl;
+                bool ok = symbolTable.insertIntoTable(sinfo);
+                if(!ok) {
+                        printError("Multiple declaration of " + sinfo->getSymbolName());
+                }
+        }
+        var_list.clear();    
+}
+/**************************************************************/
 %}
 
 
@@ -150,6 +182,8 @@ var_declaration : type_specifier declaration_list SEMICOLON {
                 name += " " + ($<symbolInfo>2)->getSymbolName() + ";";          // declaration_list;
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("var_declaration : type_specifier declaration_list SEMICOLON", name);
+
+                insertVarDeclaration($<symbolInfo>1->getSymbolName());
         }
         ;
 
@@ -171,25 +205,43 @@ declaration_list : declaration_list COMMA ID {
                 string name = ($<symbolInfo>1)->getSymbolName() + "," + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("declaration_list : declaration_list COMMA ID", name);
-            }
-            | declaration_list COMMA ID LTHIRD CONST_INT RTHIRD {
+
+                SymbolInfo* sinfo = $<symbolInfo>3;
+                sinfo->setSymbolType(VARIABLE_STR);
+                var_list.push_back(sinfo);
+        }
+        | declaration_list COMMA ID LTHIRD CONST_INT RTHIRD {
                 string name = ($<symbolInfo>1)->getSymbolName() + ",";                  // declaration_list, 
                 name += ($<symbolInfo>3)->getSymbolName();                              // ID
                 name += "[" + ($<symbolInfo>5)->getSymbolName() + "]";                  // [CONST_INT]
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("declaration_list : declaration_list COMMA ID", name);
-            }
-            | ID {
+            
+                SymbolInfo* sinfo = $<symbolInfo>3;
+                sinfo->setSymbolType(ARRAY_STR);
+                sinfo->setArraySize( stoi( ($<symbolInfo>5)->getSymbolName() ) );
+                var_list.push_back(sinfo);
+        }
+        | ID {
                 string name = ($<symbolInfo>1)->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("declaration_list : ID", name);
-            }
-            | ID LTHIRD CONST_INT RTHIRD {
+            
+                SymbolInfo* sinfo = $<symbolInfo>1;
+                sinfo->setSymbolType(VARIABLE_STR);
+                var_list.push_back(sinfo);
+        }
+        | ID LTHIRD CONST_INT RTHIRD {
                 string name = ($<symbolInfo>1)->getSymbolName() + "[" + ($<symbolInfo>3)->getSymbolName() + "]";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("declaration_list : ID LTHIRD CONST_INT RTHIRD", name);
-            }
-          ;
+            
+                SymbolInfo* sinfo = $<symbolInfo>1;
+                sinfo->setSymbolType(ARRAY_STR);
+                sinfo->setArraySize( stoi( ($<symbolInfo>3)->getSymbolName() ) );
+                var_list.push_back(sinfo);
+        }
+        ;
 
 
 statements : statement {
@@ -282,12 +334,30 @@ expression_statement : SEMICOLON {
 variable : ID {
                 string name = $<symbolInfo>1->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
-                printLog("variable : ID", name);        
+                printLog("variable : ID", name);    
+
+                SymbolInfo* sinfo = symbolTable.lookup(name);
+                if(sinfo == NULL) {
+                        printError("Undeclared variable " + name);
+                }
+                else {
+                        logOut << "Variable SymbolInfo Content:" << endl;
+                        logOut << sinfo->getSymbolContent() << endl;
+                }
         }
         | ID LTHIRD expression RTHIRD {
                 string name = $<symbolInfo>1->getSymbolName() + "[" + $<symbolInfo>3->getSymbolName() + "]";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("variable : ID LTHIRD expression RTHIRD", name);
+        
+                SymbolInfo* sinfo = symbolTable.lookup($<symbolInfo>1->getSymbolName());
+                if(sinfo == NULL) {
+                        printError("Undeclared variable " + name);
+                }
+                else {
+                        logOut << "Variable SymbolInfo Content:" << endl;
+                        logOut << sinfo->getSymbolContent() << endl;
+                }
         }
         ;
      
@@ -299,7 +369,7 @@ expression : logic_expression {
         | variable ASSIGNOP logic_expression {
                 string name = $<symbolInfo>1->getSymbolName() + "=" + $<symbolInfo>3->getSymbolName();
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
-                printLog("expression : variable ASSIGNOP logic_expression", name);   
+                printLog("expression : variable ASSIGNOP logic_expression", name);                
         }
         ;
             
@@ -451,10 +521,8 @@ int main(int argc,char *argv[])
 
 
 void yyerror(char* s) {
-    logOut << "Error At line no: " << lineCount << " " << s << endl;
-
-    lineCount++;
+    logOut << "Error At line " <<  lineCount << ": " << s << endl;
+    errorOut << "Error At line " << lineCount << ": " << s << endl;
     errorCount++;
-    
-    return ;
+    return;
 }
