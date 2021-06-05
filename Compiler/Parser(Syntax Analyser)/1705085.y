@@ -713,6 +713,10 @@ term : unary_expression {
                         $<symbolInfo>$->setReturnType(INT_STR);
                 }
                 else {
+
+                        if($<symbolInfo>2->getSymbolName() == "/" and $<symbolInfo>3->getSymbolName() == "0")
+                                printError("Divide by zero");
+                                
                         if($<symbolInfo>1->getReturnType() == FLOAT_STR or $<symbolInfo>3->getReturnType() == FLOAT_STR)
                                 $<symbolInfo>$->setReturnType(FLOAT_STR);
                         else
