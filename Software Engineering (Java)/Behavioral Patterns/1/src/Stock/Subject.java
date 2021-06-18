@@ -1,5 +1,5 @@
 package Stock;
 
 public interface Subject {
-    void notifyObservers();
+    void notifyObservers(String stockName, String message);
 }

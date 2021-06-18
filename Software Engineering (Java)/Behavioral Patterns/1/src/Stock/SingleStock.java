@@ -5,13 +5,13 @@ public class SingleStock {
     int amount;
     double price;
 
-    SingleStock() {
+    public SingleStock() {
         this.name = "";
         this.amount = 0;
         this.price = 0;
     }
 
-    SingleStock(String name, int amount, double price) {
+    public SingleStock(String name, int amount, double price) {
         this.name = name;
         this.amount = amount;
         this.price = price;
@@ -39,5 +39,14 @@ public class SingleStock {
 
     public void setPrice(double price) {
         this.price = price;
+    }
+
+    @Override
+    public String toString() {
+        return "SingleStock{" +
+                "name='" + name + '\'' +
+                ", amount=" + amount +
+                ", price=" + price +
+                '}';
     }
 }

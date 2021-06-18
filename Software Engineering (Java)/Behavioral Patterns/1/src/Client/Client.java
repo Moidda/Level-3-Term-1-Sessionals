@@ -13,9 +13,13 @@ public class Client {
         Scanner scanner = new Scanner(System.in);
         String str = "";
 
+        System.out.println(din.readUTF());
+        System.out.println(din.readUTF());
+
         while(!str.equalsIgnoreCase("stop")) {
             str = scanner.nextLine();
-            dout.writeUTF(str);
+            dout.writeUTF(str);                             // request sth to the server
+            System.out.println(din.readUTF());              // print the response of server to that request
         }
 
         din.close();

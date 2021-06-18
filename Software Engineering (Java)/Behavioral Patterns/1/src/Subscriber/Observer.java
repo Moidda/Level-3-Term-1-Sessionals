@@ -5,5 +5,5 @@ package Subscriber;
  * and so must override/define an update() function
  * */
 public interface Observer {
-    void update();
+    void update(String message);
 }
