@@ -32,7 +32,10 @@ public class ClientHandler extends Thread {
             try {
                 // listening for any messages from the client
                 str = din.readUTF();
-                if(str.isEmpty()) continue;
+                if(str.isEmpty()) {
+                    dout.writeUTF("");
+                    continue;
+                }
 
                 // client wishes to disconnect
                 if (str.equalsIgnoreCase("stop"))
