@@ -372,11 +372,9 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN {
                         asmCode.mainCode = $<symbolInfo>7->getAsmCode();        // setting the code so far generated as the main asm procedure code
                 }
                 else {
-                        vector<string> v;
                         for(int i = 0; i < par_list.size(); i++)  {
                                 asmFuncCode = asmCode.Comment(par_list[i].name + " => " + getStackPointer(par_list[i].name)) + asmFuncCode;
                         }
-                        
                         asmCode.insertFunction(funcName, asmFuncCode, paramSize);
                 }
 
@@ -400,11 +398,18 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN {
                 /**
                         Code Generator
                 */
+                string funcName = $<symbolInfo>2->getSymbolName();
+                string asmFuncCode = $<symbolInfo>7->getAsmCode();
+                int paramSize = par_list.size();
+
                 if($<symbolInfo>2->getSymbolName() == "main") {
                         asmCode.mainCode = $<symbolInfo>6->getAsmCode();        // setting the code so far generated as the main asm procedure code
                 }
                 else {
-
+                        for(int i = 0; i < par_list.size(); i++)  {
+                                asmFuncCode = asmCode.Comment(par_list[i].name + " => " + getStackPointer(par_list[i].name)) + asmFuncCode;
+                        }
+                        asmCode.insertFunction(funcName, asmFuncCode, paramSize);
                 }
         }
         ;
@@ -910,8 +915,6 @@ variable : ID {
                 asmStr += asmCode.Add("BX", "BX");                              // bx *= 2
                 $<symbolInfo>$->setAsmCode(asmStr);
                 
-                /**---------------------------------------------------- clarify?????????????? <-
-                */
                 string valueRep = $<symbolInfo>1->getSymbolName();
                 valueRep = asmCode.variableNaming(valueRep);
                 $<symbolInfo>$->setValueRep(valueRep);
