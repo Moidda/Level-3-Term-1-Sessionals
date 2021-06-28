@@ -56,7 +56,27 @@ void printError(string errorMsg) {
         errorCount++;
 }
 
-void insertVarDeclaration(string variableType) {
+bool isNumber(string str) {
+        for(char c: str) if(!('0' <= c and c <= '9')) return false;
+        return true;
+}
+
+bool isInsideFuncDefinition() {
+        return par_list.size() > 0;
+}
+
+string getStackPointer(string variableName) {
+        string stackPointer = "#";
+        for(int i = 0, j = (int)par_list.size()-1; j>=0; j--, i++) {
+                if(par_list[j].name == variableName) {
+                        stackPointer = "[BP+" + to_string(4 + 2*i) + "]";
+                        break;
+                }
+        }
+        return stackPointer;
+}
+
+void insertVarDeclaration(string variableType, bool isParameter) {
         if(variableType == "void") {
                 printError("Variable type cannot be void");
                 variableType = FLOAT_STR;                                 // treating void variables as FLOAT henceforth
@@ -73,7 +93,8 @@ void insertVarDeclaration(string variableType) {
                 else
                         str = sinfo->getSymbolName() + "1 DW ?";
                 
-                asmCode.varList.push_back(str);
+                if(!isParameter)
+                        asmCode.varList.push_back(str);
         }
         var_list.clear();
 }
@@ -178,12 +199,12 @@ start : program {
                 asmStr += ".STACK 100H\n\n";
                 asmStr += ".DATA\n";
                 asmStr += "CR EQU 0DH\n";
-                asmStr += "LF EQU 0AH\n\n";
+                asmStr += "LF EQU 0AH\n";
+                asmStr += "NEWLN DB CR, LF, '$'\n";
 
-                asmStr += asmCode.Comment("all the variables and temporary variables here ...");
+                asmStr += asmCode.Comment("all the variables here ...");
                 for(string str: asmCode.varList)  asmStr += str + "\n";
                 asmCode.varList.clear();
-                asmStr += "\n";
 
                 asmStr += asmCode.Comment("temporary variabls ...");
                 for(string str: asmCode.tempList) asmStr += str + "\n";
@@ -206,6 +227,8 @@ start : program {
                 asmStr += "MAIN ENDP\n\n";
 
                 asmStr += asmCode.Comment("extra procedues here\n");
+
+                asmStr = asmCode.removeReturnStatements(asmStr, "DOS_EXIT");
                 asmOut << asmStr << endl;
                 asmStr.clear();
 
@@ -214,6 +237,8 @@ start : program {
                 in.open("print_procedure.asm");
                 while(getline(in, asmStr)) asmOut << asmStr << endl;
                 in.close();
+
+                asmOut << asmCode.CreateProcedures() << endl;
 
                 asmOut << "END MAIN" << endl;
 
@@ -335,18 +360,27 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN {
                 if($<symbolInfo>1->getSymbolName() != $<symbolInfo>7->getReturnType())
                         printError("Return type mismatch with function declaration in function " + $<symbolInfo>2->getSymbolName());
 
-                par_list.clear();
-
 
                 /**
                         Code Generator
                 */
-                if($<symbolInfo>2->getSymbolName() == "main") {
+                string funcName = $<symbolInfo>2->getSymbolName();
+                string asmFuncCode = $<symbolInfo>7->getAsmCode();
+                int paramSize = par_list.size();
+                
+                if(funcName == "main") {
                         asmCode.mainCode = $<symbolInfo>7->getAsmCode();        // setting the code so far generated as the main asm procedure code
                 }
                 else {
-
+                        vector<string> v;
+                        for(int i = 0; i < par_list.size(); i++)  {
+                                asmFuncCode = asmCode.Comment(par_list[i].name + " => " + getStackPointer(par_list[i].name)) + asmFuncCode;
+                        }
+                        
+                        asmCode.insertFunction(funcName, asmFuncCode, paramSize);
                 }
+
+                par_list.clear();
         }
         | type_specifier ID LPAREN RPAREN {
                 processFuncDef($<symbolInfo>1->getSymbolName(), $<symbolInfo>2->getSymbolName());
@@ -435,7 +469,7 @@ var_declaration : type_specifier declaration_list SEMICOLON {
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("var_declaration : type_specifier declaration_list SEMICOLON", name);
 
-                insertVarDeclaration($<symbolInfo>1->getSymbolName());
+                insertVarDeclaration($<symbolInfo>1->getSymbolName(), false);
         }
         ;
 
@@ -514,6 +548,8 @@ statements : statement {
                 printLog("statements : statements statement", name);
 
                 $<symbolInfo>$->setReturnType( $<symbolInfo>2->getReturnType() );
+                if($<symbolInfo>$->getReturnType() == VOID_STR) 
+                        $<symbolInfo>$->setReturnType($<symbolInfo>1->getReturnType());
 
                 /**
                         Code Generator
@@ -582,7 +618,7 @@ statement : var_declaration {
                         => condition code
                         => ; check if condition is false
                         => CMP $4->getValueRep(), 0
-                        => JNE LABEL                    ; break loop when condition becomes true
+                        => JE LABEL                    ; break loop when condition becomes true
                         => loop body code
                         => increment code
                         => JMP LOOP
@@ -601,7 +637,7 @@ statement : var_declaration {
                 asmStr += asmCode.Comment("LOOP BREAK CONDITION");              
                 asmStr += $<symbolInfo>4->getAsmCode();                         
                 asmStr += asmCode.Cmp($<symbolInfo>4->getValueRep(), "0");      
-                asmStr += asmCode.Jump("JNE", endLoop, "BREAK WHEN BREAK-CONDITION IS TRUE");
+                asmStr += asmCode.Jump("JE", endLoop, "BREAK WHEN BREAK-CONDITION IS TRUE");
         
                 asmStr += $<symbolInfo>7->getAsmCode();                         
                 asmStr += $<symbolInfo>5->getAsmCode();                         
@@ -708,10 +744,19 @@ statement : var_declaration {
 
                 /**
                         Code Generator
+
+                        MOV AX, TO_PRINT
+                        CALL PRINT_INT
+                        LEA DX, MSGN
+                        MOV AH, 9
+                        INT 21H
                 */
                 string valueRep = asmCode.variableNaming($<symbolInfo>3->getSymbolName());
                 string asmStr = asmCode.Mov("AX", valueRep);
                 asmStr += asmCode.Line("CALL PRINT_INT");
+                asmStr += asmCode.Line("LEA DX, NEWLN");
+                asmStr += asmCode.Line("MOV AH, 9");
+                asmStr += asmCode.Line("INT 21H");
                 $<symbolInfo>$->setAsmCode(asmStr);
         }
         | RETURN expression SEMICOLON {
@@ -720,6 +765,13 @@ statement : var_declaration {
                 printLog("statement : RETURN expression SEMICOLON", name);
 
                 $<symbolInfo>$->setReturnType($<symbolInfo>2->getReturnType());
+        
+                /**
+                        Code Generator
+                */
+                string asmStr = $<symbolInfo>2->getAsmCode();
+                asmStr += asmCode.Line("RETURN " + $<symbolInfo>2->getValueRep());
+                $<symbolInfo>$->setAsmCode(asmStr);
         }
         ;
 
@@ -756,7 +808,7 @@ cmpnd_action : {
                         SymbolInfo* sinfo = new SymbolInfo(par_list[i].name, "ID");
                         sinfo->setSymbolType(VARIABLE_STR);                             // parameter_list should contain only variables (arrays are not supported)
                         var_list.push_back(sinfo);
-                        insertVarDeclaration(par_list[i].retType);
+                        insertVarDeclaration(par_list[i].retType, true);
                 }
         }
 
@@ -809,7 +861,13 @@ variable : ID {
                         A single variable does not generate any code. 
                         Only propagate/assign the valueRep appropriately
                 */
-                string valueRep = asmCode.variableNaming($<symbolInfo>1->getSymbolName());
+                string valueRep;
+                if(isInsideFuncDefinition()) valueRep = getStackPointer($<symbolInfo>1->getSymbolName()); 
+                else valueRep = asmCode.variableNaming($<symbolInfo>1->getSymbolName());
+                
+                if(valueRep == "#")
+                        valueRep = asmCode.variableNaming($<symbolInfo>1->getSymbolName());
+
                 $<symbolInfo>$->setValueRep(valueRep);
         }
         | ID LTHIRD expression RTHIRD {
@@ -1132,8 +1190,15 @@ term : unary_expression {
                 asmStr += $<symbolInfo>3->getAsmCode();
                 asmStr += asmCode.Comment(temp + " <- " + name);
 
-                if($<symbolInfo>2->getSymbolName() == "*")  asmStr += asmCode.Imul(temp, $<symbolInfo>1->getValueRep(), $<symbolInfo>3->getValueRep());
-                else  asmStr += asmCode.Idiv(temp, $<symbolInfo>1->getValueRep(), $<symbolInfo>3->getValueRep(), $<symbolInfo>2->getSymbolName() == "/");
+                string operand1 = $<symbolInfo>1->getValueRep();
+                string operand2 = $<symbolInfo>3->getValueRep();
+                if(isNumber($<symbolInfo>3->getValueRep())) {
+                        asmStr += asmCode.Mov("CX", $<symbolInfo>3->getValueRep());
+                        operand2 = "CX";
+                }
+
+                if($<symbolInfo>2->getSymbolName() == "*")  asmStr += asmCode.Imul(temp, operand1, operand2);
+                else  asmStr += asmCode.Idiv(temp, operand1, operand2, $<symbolInfo>2->getSymbolName() == "/");
                 
                 $<symbolInfo>$->setAsmCode(asmStr);
                 $<symbolInfo>$->setValueRep(temp);
@@ -1270,13 +1335,25 @@ factor : variable {
                                 }
                         }
                         $<symbolInfo>$->setReturnType( sinfo->getReturnType() );
-                }
+                
 
-                /**
-                -----------------------------------------------------------------------------------> needs attention
-                        Code Generator for calling functions
-                */
-        }
+                        /**
+                                Code Generator for calling functions
+                                
+                        */
+                        string temp = asmCode.newTemp();                                                // new temp register to assign the valueRep
+                        string asmStr = "";
+                        asmStr += asmCode.Comment(temp + " <- " + name);
+                        for(string str: asmCode.argList) asmStr += asmCode.Push(str);
+                        asmStr += asmCode.Line("CALL " + $<symbolInfo>1->getSymbolName());
+                        asmStr += asmCode.Mov(temp, "AX");                                              // all procedures store the return value in AX 
+
+                        $<symbolInfo>$->setAsmCode(asmStr);
+                        $<symbolInfo>$->setValueRep(temp);
+
+                        asmCode.argList.clear();
+                }
+        }       
         | LPAREN expression RPAREN {
                 string name = "(" + $<symbolInfo>2->getSymbolName() + ")";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
@@ -1384,6 +1461,12 @@ argument_list : arguments {
                 for(int i = 0; i < temp.size(); i++) {
                         $<symbolInfo>$->insertFuncParameter(temp[i].retType);
                 }
+
+
+                /**
+                        Code Generator
+                */
+                $<symbolInfo>$->setAsmCode($<symbolInfo>1->getAsmCode());
         }
         | {
                 // thik ase ????????????????????????????????????????????????????????????????????????????
@@ -1404,6 +1487,12 @@ arguments : arguments COMMA logic_expression {
                         $<symbolInfo>$->insertFuncParameter(temp[i].retType);
                 }
                 $<symbolInfo>$->insertFuncParameter($<symbolInfo>3->getReturnType());
+
+                /**
+                        Code Generator
+                */
+                $<symbolInfo>$->setAsmCode($<symbolInfo>1->getAsmCode() + $<symbolInfo>3->getAsmCode());
+                asmCode.argList.push_back($<symbolInfo>3->getValueRep());
         }
         | logic_expression {
                 $<symbolInfo>$ = new SymbolInfo($<symbolInfo>1->getSymbolName(), "NON_TERMINAL");
@@ -1412,6 +1501,12 @@ arguments : arguments COMMA logic_expression {
                 voidChecking($<symbolInfo>1);
 
                 $<symbolInfo>$->insertFuncParameter($<symbolInfo>1->getReturnType());
+        
+                /**
+                        Code Generator
+                */
+                $<symbolInfo>$->setAsmCode($<symbolInfo>1->getAsmCode());
+                asmCode.argList.push_back($<symbolInfo>1->getValueRep());
         }
         ;
 %%
@@ -1446,6 +1541,8 @@ int main(int argc,char *argv[])
 
     if(errorCount) {
         remove("assembly_code.asm");
+        asmOut.open("assembly_code.asm");
+        asmOut << "Errors in code" << endl;
     }
 
     return 0;
