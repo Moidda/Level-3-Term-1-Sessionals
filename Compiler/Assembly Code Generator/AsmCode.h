@@ -1,12 +1,26 @@
 class AsmCode {
 public:
 
+    struct FunctionBody {
+        string name, code;
+        int paramSize;
+
+        FunctionBody() {}
+
+        FunctionBody(string name, string code, int paramSize) {
+            this->name = name;
+            this->code = code;
+            this->paramSize = paramSize;
+        }
+    };
+
     int tempCount = 0;
     int labelCount = 0;
     string mainCode;
-    vector<string> funcList;
+    vector<FunctionBody> funcList;
     vector<string> varList;
     vector<string> tempList;
+    vector<string> argList;
 
     string newLabel() {
         string labelName = "L_" + to_string(labelCount);
@@ -30,7 +44,9 @@ public:
     }
 
     string Line(string str, string comment = "") {
-        return str + "\t\t\t; " + comment + "\n";
+        if(comment.size()) str += "\t\t\t; " + comment;
+        str += "\n";
+        return str;
     }
 
     // PUSH VAR    ; STACK <- VAR
@@ -166,6 +182,65 @@ public:
         ret += Jump("JE", label);
         ret += Line("MOV " + dest + ", 1", expression + " IS TRUE");
         ret += Label(label) + "\n";
+        return ret;
+    }
+
+    void insertFunction(string name, string code, int paramSize) {
+        funcList.push_back(FunctionBody(name, code, paramSize));
+    }
+
+    /**
+     * replacing all the return statements with a MOV AX, RETURN_VALUE
+     * and a JUMP RETURN_LABEL statement
+     * */
+    string removeReturnStatements(string str, string returnLabel) {
+        int st = 0, en = -1;
+        while(true) {
+            st = str.find("RETURN", 0);
+            if(st == string::npos) break;
+            en = str.find("\n", st);
+            
+            string returnValue;
+            stringstream ss(str.substr(st, en-st+1));
+            ss >> returnValue;
+            ss >> returnValue;
+            int pos = str.erase(str.begin()+st, str.begin()+en+1) - str.begin();
+            string toInsert = Mov("AX", returnValue);
+            toInsert += Jump("JMP", returnLabel, "return");
+            str.insert(pos, toInsert);
+        }
+        return str;
+    }
+
+    /**
+     * FUNC_NAME PROC
+     *      ...
+     * ENDP FUNC_NAME
+     * */
+    string asmProcedure(FunctionBody f) {
+        string returnLabel = newLabel();
+        string asmStr = Line(";----------------------------------------------------------------------------------;");
+        asmStr += Line(f.name + " PROC");
+        asmStr += Line("PUSH BP");
+        asmStr += Line("MOV BP, SP");
+        asmStr += removeReturnStatements(f.code, returnLabel);
+        asmStr += Label(returnLabel);
+        asmStr += Line("POP BP");
+        asmStr += Line("RET " + to_string(f.paramSize*2));
+        asmStr += Line("ENDP " + f.name);
+        asmStr += Line(";----------------------------------------------------------------------------------;");
+        
+        return asmStr;
+    }
+
+    /**
+     * Creates all the procedures from the list of functions
+     * */
+    string CreateProcedures() {
+        string ret = "";
+        for(int i = 0; i < funcList.size(); i++) 
+            ret += asmProcedure(funcList[i]);
+        
         return ret;
     }
 };
