@@ -243,4 +243,68 @@ public:
         
         return ret;
     }
+
+    vector<string> string_split(string str, string regex) {
+        vector<string> ret;
+        string cur = "";
+        for(char ch: str) {
+            bool found = false;
+            for(char ch2: regex) found |=( ch==ch2);
+            if(!found) {
+                cur.push_back(ch);
+            }
+            else {
+                if(!cur.empty()) ret.push_back(cur);
+                cur.clear();
+            }
+        }
+        if(!cur.empty()) ret.push_back(cur);
+        return ret;
+    }
+
+    void createOptimizedCode(string inputFile, string outputFile) {
+        ifstream in;
+        ofstream out;
+        in.open(inputFile);
+        out.open(outputFile);
+        map<string, string> mp;
+        string str;
+
+        while(getline(in, str)) {
+            vector<string> v = string_split(str, " ,\t");
+            if(v.empty() or v[0] != "MOV") {
+                out << str << endl;
+                continue;
+            }
+
+            string str1 = str;
+            string dst1 = v[1];
+            string src1 = v[2];
+
+            getline(in, str);
+            v = string_split(str, " ,\t");
+            if(v.empty() or v[0] != "MOV") {
+                out << str1 << endl;
+                out << str << endl;
+                continue;
+            }
+
+            string str2 = str;
+            string dst2 = v[1];
+            string src2 = v[2];
+
+            /**
+             * MOV X, Y
+             * MOV Y, X
+             * */
+
+            out << str1 << endl;
+            if(dst1 == src2 and src1 == dst2) {
+                // dont print str2
+            }
+            else {
+                out << str2 << endl;
+            }
+        }
+    }
 };
