@@ -399,7 +399,7 @@ func_definition : type_specifier ID LPAREN parameter_list RPAREN {
                         Code Generator
                 */
                 string funcName = $<symbolInfo>2->getSymbolName();
-                string asmFuncCode = $<symbolInfo>7->getAsmCode();
+                string asmFuncCode = $<symbolInfo>6->getAsmCode();
                 int paramSize = par_list.size();
 
                 if($<symbolInfo>2->getSymbolName() == "main") {
@@ -737,7 +737,7 @@ statement : var_declaration {
                 $<symbolInfo>$->setAsmCode(asmStr);
         }
         | PRINTLN LPAREN ID RPAREN SEMICOLON {
-                string name = "printf(" + $<symbolInfo>3->getSymbolName() + ");";
+                string name = "println(" + $<symbolInfo>3->getSymbolName() + ");";
                 $<symbolInfo>$ = new SymbolInfo(name, "NON_TERMINAL");
                 printLog("statement : PRINTLN LPAREN ID RPAREN SEMICOLON", name);
                 $<symbolInfo>$->setReturnType(VOID_STR);
@@ -757,7 +757,8 @@ statement : var_declaration {
                         INT 21H
                 */
                 string valueRep = asmCode.variableNaming($<symbolInfo>3->getSymbolName());
-                string asmStr = asmCode.Mov("AX", valueRep);
+                string asmStr = asmCode.Comment(name);
+                asmStr += asmCode.Mov("AX", valueRep);
                 asmStr += asmCode.Line("CALL PRINT_INT");
                 asmStr += asmCode.Line("LEA DX, NEWLN");
                 asmStr += asmCode.Line("MOV AH, 9");
@@ -1347,7 +1348,8 @@ factor : variable {
                         string temp = asmCode.newTemp();                                                // new temp register to assign the valueRep
                         string asmStr = "";
                         asmStr += asmCode.Comment(temp + " <- " + name);
-                        for(string str: asmCode.argList) asmStr += asmCode.Push(str);
+                        asmStr += $<symbolInfo>3->getAsmCode();
+                        for(string str: asmCode.argList) asmStr += asmCode.Push(str);                   // pushing all the valueRep of arguments in the stack
                         asmStr += asmCode.Line("CALL " + $<symbolInfo>1->getSymbolName());
                         asmStr += asmCode.Mov(temp, "AX");                                              // all procedures store the return value in AX 
 
@@ -1517,14 +1519,13 @@ arguments : arguments COMMA logic_expression {
 
 int main(int argc,char *argv[])
 {
-
     if((input = fopen(argv[1], "r")) == NULL) {
         printf("Cannot Open Input File.\n");
         exit(1);
     }
 
 
-    asmOut.open("assembly_code.asm");
+    asmOut.open("code.asm");
     logOut.open("Parser_log.txt");
     errorOut.open("Parser_error.txt");
 
@@ -1543,10 +1544,11 @@ int main(int argc,char *argv[])
     asmOut.close();
 
     if(errorCount) {
-        remove("assembly_code.asm");
-        asmOut.open("assembly_code.asm");
-        asmOut << "Errors in code" << endl;
+        remove("code.asm");
+        asmOut.open("code.asm");
     }
+
+    asmCode.createOptimizedCode("code.asm", "optimized_code.asm");
 
     return 0;
 }
