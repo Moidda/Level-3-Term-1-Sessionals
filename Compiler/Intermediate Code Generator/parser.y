@@ -89,9 +89,9 @@ void insertVarDeclaration(string variableType, bool isParameter) {
                 
                 string str;
                 if(sinfo->getSymbolType() == ARRAY_STR) 
-                        str = sinfo->getSymbolName() + "1 DW " + sinfo->intToStr(sinfo->getArraySize()) + " DUP(?)"; 
+                        str = sinfo->getSymbolName() + symbolTable.getCurrentScopeName() + " DW " + sinfo->intToStr(sinfo->getArraySize()) + " DUP(?)"; 
                 else
-                        str = sinfo->getSymbolName() + "1 DW ?";
+                        str = sinfo->getSymbolName() + symbolTable.getCurrentScopeName() + " DW ?";
                 
                 if(!isParameter)
                         asmCode.varList.push_back(str);
@@ -756,7 +756,7 @@ statement : var_declaration {
                         MOV AH, 9
                         INT 21H
                 */
-                string valueRep = asmCode.variableNaming($<symbolInfo>3->getSymbolName());
+                string valueRep = $<symbolInfo>3->getSymbolName() + symbolTable.getScopeName($<symbolInfo>3->getSymbolName());
                 string asmStr = asmCode.Comment(name);
                 asmStr += asmCode.Mov("AX", valueRep);
                 asmStr += asmCode.Line("CALL PRINT_INT");
@@ -869,10 +869,10 @@ variable : ID {
                 */
                 string valueRep;
                 if(isInsideFuncDefinition()) valueRep = getStackPointer($<symbolInfo>1->getSymbolName()); 
-                else valueRep = asmCode.variableNaming($<symbolInfo>1->getSymbolName());
+                else valueRep = $<symbolInfo>1->getSymbolName() + symbolTable.getScopeName($<symbolInfo>1->getSymbolName());
                 
                 if(valueRep == "#")
-                        valueRep = asmCode.variableNaming($<symbolInfo>1->getSymbolName());
+                        valueRep = $<symbolInfo>1->getSymbolName() + symbolTable.getScopeName($<symbolInfo>1->getSymbolName());
 
                 $<symbolInfo>$->setValueRep(valueRep);
         }
@@ -916,8 +916,7 @@ variable : ID {
                 asmStr += asmCode.Add("BX", "BX");                              // bx *= 2
                 $<symbolInfo>$->setAsmCode(asmStr);
                 
-                string valueRep = $<symbolInfo>1->getSymbolName();
-                valueRep = asmCode.variableNaming(valueRep);
+                string valueRep = $<symbolInfo>1->getSymbolName() + symbolTable.getScopeName($<symbolInfo>1->getSymbolName());
                 $<symbolInfo>$->setValueRep(valueRep);
         }
         ;
