@@ -66,4 +66,18 @@ public:
             cur = cur->getParentScope();
         }
     }
+
+    string getCurrentScopeName() {
+        return currentScope->getId();
+    }
+
+    string getScopeName(string symbolName) {
+        ScopeTable* cur = this->currentScope;
+        while(cur != NULL) {
+            SymbolInfo* ret = cur->scopeLookup(symbolName);
+            if(ret != NULL) return cur->getId();
+            cur = cur->getParentScope();
+        }
+        return "#";
+    }
 };
