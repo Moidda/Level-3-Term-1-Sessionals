@@ -271,25 +271,26 @@ public:
         string str;
 
         while(getline(in, str)) {
-            vector<string> v = string_split(str, " ,\t");
-            if(v.empty() or v[0] != "MOV") {
-                out << str << endl;
-                continue;
-            }
+            out << str << endl;
 
-            string str1 = str;
+            vector<string> v = string_split(str, " ,\t");
+            if(v.empty() or v[0] != "MOV") continue;
+
             string dst1 = v[1];
             string src1 = v[2];
 
-            getline(in, str);
+            // ignore all the lines that are comments
+            while(getline(in, str)) {
+                if(str.empty() or str[0] == ';') out << str << endl;
+                else break;
+            }
+
             v = string_split(str, " ,\t");
             if(v.empty() or v[0] != "MOV") {
-                out << str1 << endl;
                 out << str << endl;
                 continue;
             }
 
-            string str2 = str;
             string dst2 = v[1];
             string src2 = v[2];
 
@@ -298,12 +299,11 @@ public:
              * MOV Y, X
              * */
 
-            out << str1 << endl;
             if(dst1 == src2 and src1 == dst2) {
                 // dont print str2
             }
             else {
-                out << str2 << endl;
+                out << str << endl;
             }
         }
     }
