@@ -132,7 +132,7 @@ public:
             return "1";
 
         int p = this->parentScope->childScopeCount + 1;
-        string id = this->parentScope->id + "." + to_string(p);
+        string id = this->parentScope->id + "_" + to_string(p);
         return id;
     }
 
