@@ -17,7 +17,7 @@ public class Sorting {
                 returnList.add(list1.get(i));
                 i++;
             }
-            else if(list1.get(i) < list2.get(j)) {
+            else if(list1.get(i) > list2.get(j)) {
                 returnList.add(list1.get(i));
                 i++;
             }
